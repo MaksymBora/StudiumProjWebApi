@@ -29,9 +29,8 @@ namespace LaptopsApi.Infrastructure.Data
                 entity.Property(e => e.Description).HasColumnName("description").HasColumnType("nvarchar(max)");
                 entity.Property(e => e.AddedByUserId).HasColumnName("added_by_user_id");
                 entity.Property(e => e.AddedDate).HasColumnName("added_date");
-                entity.Property(e => e.SpecsId).HasColumnName("specs_id");
-                entity.Property(e => e.AddedDate).HasColumnName("added_date");
                 entity.Property(e => e.CreateDate).HasColumnName("create_date").HasDefaultValueSql("GETDATE()");
+                entity.Property(e => e.SpecsId).HasColumnName("specs_id");
 
                 // 1:1 with Specs
                 entity.HasOne(p => p.Specs)
@@ -40,6 +39,11 @@ namespace LaptopsApi.Infrastructure.Data
                 .HasPrincipalKey<Specs>(s => s.SpecsId)
                 .HasConstraintName("FK_Product_Specs")
                 .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasOne(p => p.AddedByUser)
+                      .WithMany(u => u.AddedProducts)   // ← вот так!
+                      .HasForeignKey(p => p.AddedByUserId)
+                      .HasConstraintName("FK_Product_User_added_by_user_id");
             });
 
             // Specs configuration
@@ -64,6 +68,12 @@ namespace LaptopsApi.Infrastructure.Data
                 e.Property(x => x.ReviewDate).HasColumnName("review_date");
                 e.Property(x => x.EditedAt).HasColumnName("edited_at");
                 e.Property(x => x.IsDeleted).HasColumnName("is_deleted");
+
+                e.HasOne(r => r.User)
+                    .WithMany(u => u.Reviews)
+                    .HasForeignKey(r => r.UserId)
+                    .HasConstraintName("FK_Review_User_user_id")
+                    .OnDelete(DeleteBehavior.Cascade);
             });
 
             modelBuilder.Entity<User>(e =>
