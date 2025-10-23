@@ -4,6 +4,9 @@ using LaptopsApi.Application.Common.DTOs;
 using LopTopWebApi.Domain.Interfaces;
 using AutoMapper;
 using MediatR;
+using LaptopsApi.Application.Commands;
+using LopTopWebApi.Contracts;
+using System.ComponentModel.DataAnnotations;
 
 namespace loptopwebapi.Controllers
 {
@@ -16,11 +19,7 @@ namespace loptopwebapi.Controllers
         private readonly IMapper _mapper;
         private readonly ILogger<ProductsController> _logger;
 
-        public ProductsController(
-            IProductRepository productRepository,
-            IMediator mediator,
-            IMapper mapper,
-            ILogger<ProductsController> logger)
+        public ProductsController(IProductRepository productRepository,IMediator mediator,IMapper mapper,ILogger<ProductsController> logger)
         {
             _productRepository = productRepository;
             _mediator = mediator;
@@ -50,14 +49,10 @@ namespace loptopwebapi.Controllers
         /// <param name="maxPrice">Maximum price</param>
         /// <param name="minRamGb">Minimum RAM in GB</param>
         [HttpGet("filter")]
-        public async Task<IActionResult> GetFiltered(
-            [FromQuery] string? brand = null,
-            [FromQuery] decimal? minPrice = null,
-            [FromQuery] decimal? maxPrice = null,
-            [FromQuery] int? minRamGb = null)
+        public async Task<IActionResult> GetFiltered([FromQuery] string? brand = null,[FromQuery] decimal? minPrice = null,
+            [FromQuery] decimal? maxPrice = null,[FromQuery] int? minRamGb = null)
         {
-            _logger.LogInformation("Got Request for filtered Laptops: brand={Brand}, minPrice={MinPrice}, maxPrice={MaxPrice}, minRamGb={MinRamGb}",
-                brand, minPrice, maxPrice, minRamGb);
+            _logger.LogInformation("Got Request for filtered Laptops: brand={Brand}, minPrice={MinPrice}, maxPrice={MaxPrice}, minRamGb={MinRamGb}",brand, minPrice, maxPrice, minRamGb);
 
             var query = new GetProductsQuery()
             {
@@ -69,6 +64,42 @@ namespace loptopwebapi.Controllers
 
             var products = await _mediator.Send(query);
             return Ok(products);
+        }
+
+        /// <summary>
+        /// Add rating
+        /// </summary>
+        [HttpPost("{productId:guid}/rating")]
+        // [Authorize] 
+        public async Task<IActionResult> AddRating(
+            [FromRoute] Guid productId,
+            [FromBody, Required] AddRatingRequest body,
+            CancellationToken ct)
+        {
+            _logger.LogInformation("Add rating: productId={ProductId}, userId={UserId}, rating={Rating}",
+                productId, body.UserId, body.Rating);
+
+            var reviewId = await _mediator.Send(new AddProductRatingCommand
+            {
+                ProductId = productId,
+                UserId = body.UserId,
+                Rating = body.Rating,
+                Comment = body.Comment
+            }, ct);
+
+            return CreatedAtAction(nameof(GetRating), new { productId }, new { reviewId });
+        }
+
+        /// <summary>
+        /// Get avg rate
+        /// </summary>
+        [HttpGet("{productId:guid}/rating")]
+        public async Task<IActionResult> GetRating([FromRoute] Guid productId, CancellationToken ct)
+        {
+            var avg = await _mediator.Send(new GetProductRatingQuery { ProductId = productId }, ct);
+
+            var result = avg.HasValue ? Math.Round(avg.Value, 1) : (double?)null;
+            return Ok(new { productId, averageRating = result });
         }
     }
 }

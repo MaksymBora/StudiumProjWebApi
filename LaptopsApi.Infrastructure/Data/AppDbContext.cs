@@ -7,6 +7,7 @@ namespace LaptopsApi.Infrastructure.Data
     {
         public DbSet<Product> Products { get; set; }
         public DbSet<Specs> Specs { get; set; }
+        public DbSet<Review> Reviews { get; set; }
 
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
@@ -47,6 +48,21 @@ namespace LaptopsApi.Infrastructure.Data
                 entity.HasKey(e => e.SpecsId);
                 entity.Property(e => e.SpecsId).HasColumnName("specs_id").ValueGeneratedNever();
                 entity.Property(e => e.RamGb).HasColumnName("ram_gb");
+            });
+
+            modelBuilder.Entity<Review>(e =>
+            {
+                e.ToTable("Review");
+                e.HasKey(x => x.ReviewId);
+                e.Property(x => x.ReviewId).HasColumnName("review_id").ValueGeneratedNever();
+                e.Property(x => x.ProductId).HasColumnName("product_id");
+                e.Property(x => x.UserId).HasColumnName("user_id");
+                e.Property(x => x.ParentReviewId).HasColumnName("parent_review_id");
+                e.Property(x => x.Rating).HasColumnName("rating");
+                e.Property(x => x.Comment).HasColumnName("comment");
+                e.Property(x => x.ReviewDate).HasColumnName("review_date");
+                e.Property(x => x.EditedAt).HasColumnName("edited_at");
+                e.Property(x => x.IsDeleted).HasColumnName("is_deleted");
             });
         }
     }

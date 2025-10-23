@@ -46,6 +46,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 // Repository
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
+builder.Services.AddScoped<IReviewRepository, ReviewRepository>();
 
 // AutoMapper
 builder.Services.AddAutoMapper(typeof(LaptopsApi.Application.Mappings.MappingProfile));

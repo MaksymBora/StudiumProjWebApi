@@ -1,21 +1,16 @@
-﻿using System.ComponentModel.DataAnnotations;
-
-namespace LopTopWebApi.Domain.Entities
+﻿namespace LopTopWebApi.Domain.Entities
 {
     public class Review
     {
         public Guid ReviewId { get; private set; } = Guid.NewGuid();
-        public Guid? ProductId { get; private set; }  // NULL for replies
+        public Guid? ProductId { get; private set; }
         public Guid UserId { get; private set; }
-
-        // NULL for root reviews
         public Guid? ParentReviewId { get; private set; }
-
-        public int? Rating { get; private set; }  // NULL for replies
+        public int? Rating { get; private set; }
         public string? Comment { get; private set; }
         public DateTime ReviewDate { get; private set; } = DateTime.UtcNow;
-
-        // Navigation properties
+        public DateTime? EditedAt { get; private set; }
+        public bool IsDeleted { get; private set; } = false;
         public virtual Product? Product { get; private set; }
         public virtual User User { get; private set; } = null!;
         public virtual Review? ParentReview { get; private set; }
@@ -33,27 +28,36 @@ namespace LopTopWebApi.Domain.Entities
             {
                 ProductId = productId,
                 UserId = userId,
-                ParentReviewId = null,  // Root review
                 Rating = rating,
-                Comment = comment?.Trim()
+                Comment = comment?.Trim(),
+                ParentReviewId = null
             };
         }
 
         public static Review CreateReply(Guid parentReviewId, Guid userId, string? comment = null)
         {
             if (parentReviewId == Guid.Empty)
-                throw new ArgumentException("Cannot reply directly to root level");
+                throw new ArgumentException("Parent review id required");
 
             return new Review
             {
                 UserId = userId,
                 ParentReviewId = parentReviewId,
-                Comment = comment?.Trim()
-                // ProductId and Rating remain null for replies
+                Comment = comment?.Trim(),
+                Rating = null
             };
         }
+        public void Edit(string? newComment)
+        {
+            Comment = newComment?.Trim();
+            EditedAt = DateTime.UtcNow;
+        }
 
-        // Checks
+        public void SoftDelete()
+        {
+            IsDeleted = true;
+        }
+
         public bool IsRootReview => ParentReviewId == null;
         public bool IsReply => ParentReviewId != null;
     }
