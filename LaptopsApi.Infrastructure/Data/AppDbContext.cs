@@ -8,6 +8,7 @@ namespace LaptopsApi.Infrastructure.Data
         public DbSet<Product> Products { get; set; }
         public DbSet<Specs> Specs { get; set; }
         public DbSet<Review> Reviews { get; set; }
+        public DbSet<User> Users { get; set; }
 
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
@@ -63,6 +64,19 @@ namespace LaptopsApi.Infrastructure.Data
                 e.Property(x => x.ReviewDate).HasColumnName("review_date");
                 e.Property(x => x.EditedAt).HasColumnName("edited_at");
                 e.Property(x => x.IsDeleted).HasColumnName("is_deleted");
+            });
+
+            modelBuilder.Entity<User>(e =>
+            {
+                e.ToTable("User");
+                e.HasKey(x => x.UserId);
+                e.Property(x => x.UserId).HasColumnName("user_id").ValueGeneratedNever();
+                e.Property(x => x.Username).HasColumnName("username").HasMaxLength(255);
+                e.Property(x => x.Email).HasColumnName("email").HasMaxLength(255);
+                e.Property(x => x.PasswordHash).HasColumnName("password_hash");
+                e.Property(x => x.RegistrationDate).HasColumnName("registration_date");
+                e.Property(x => x.FirstName).HasColumnName("first_name");
+                e.Property(x => x.LastName).HasColumnName("last_name");
             });
         }
     }
