@@ -1,4 +1,6 @@
-﻿namespace LopTopWebApi.Domain.Entities
+﻿using System.Text.Json.Serialization;
+
+namespace LopTopWebApi.Domain.Entities
 {
     public class Product
     {
@@ -8,15 +10,12 @@
         public string Brand { get; private set; } = string.Empty;
         public decimal ScreenSize { get; private set; }
         public string? Description { get; private set; }
-
-        public Guid? AddedByUserId { get; private set; }
+        public Guid? AddedByUserId { get; set; }
+        [JsonIgnore]
+        public User? AddedByUser { get; private set; }
         public DateTime AddedDate { get; private set; } = DateTime.UtcNow;
-
-        // FK на Specs (1:1)
         public Guid? SpecsId { get; private set; }
         public virtual Specs? Specs { get; private set; }
-
-        // Новый столбец под маппинг create_date
         public DateTime CreateDate { get; private set; }
 
         // === Factory ===
@@ -43,7 +42,6 @@
                 ScreenSize = screenSize,
                 Description = description,
                 AddedByUserId = addedByUserId
-                // CreateDate SQl can make on default
             };
         }
 
