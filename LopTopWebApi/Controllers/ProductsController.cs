@@ -7,6 +7,8 @@ using MediatR;
 using LaptopsApi.Application.Commands;
 using LopTopWebApi.Contracts;
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace loptopwebapi.Controllers
 {
@@ -70,19 +72,21 @@ namespace loptopwebapi.Controllers
         /// Add rating
         /// </summary>
         [HttpPost("{productId:guid}/rating")]
-        // [Authorize] 
-        public async Task<IActionResult> AddRating(
-            [FromRoute] Guid productId,
-            [FromBody, Required] AddRatingRequest body,
-            CancellationToken ct)
+        [Authorize] 
+        public async Task<IActionResult> AddRating([FromRoute] Guid productId,[FromBody, Required] AddRatingRequest body,CancellationToken ct)
         {
-            _logger.LogInformation("Add rating: productId={ProductId}, userId={UserId}, rating={Rating}",
-                productId, body.UserId, body.Rating);
+            _logger.LogInformation("Add rating: productId={ProductId},  rating={Rating}",
+                productId, body.Rating);
+
+            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(userIdStr)) return Forbid();
+
+            var userId = Guid.Parse(userIdStr);
 
             var reviewId = await _mediator.Send(new AddProductRatingCommand
             {
                 ProductId = productId,
-                UserId = body.UserId,
+                UserId = userId,           
                 Rating = body.Rating,
                 Comment = body.Comment
             }, ct);
