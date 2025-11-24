@@ -62,9 +62,15 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReact", policy =>
     {
-        policy.WithOrigins("http://localhost:3000")
-              .AllowAnyHeader()
-              .AllowAnyMethod();
+        policy
+            .WithOrigins(
+                "http://localhost:5173",         // Vite dev (HTTP)
+                "https://localhost:5173",        // HTTPS
+                "https://maksymbora.github.io/StudiumPro"   // GitHub Pages (origin без /StudiumPro)
+            )
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+        // .AllowCredentials(); 
     });
 });
 
