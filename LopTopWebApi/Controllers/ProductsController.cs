@@ -35,12 +35,8 @@ namespace loptopwebapi.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAll(CancellationToken ct)
         {
-            _logger.LogInformation("Got Request for all Laptops without filters");
-
-            var products = await _productRepository.GetAllAsync(ct);
-            var productDtos = _mapper.Map<IEnumerable<ProductDto>>(products);
-
-            return Ok(productDtos);
+            var products = await _mediator.Send(new GetProductsQuery(), ct);
+            return Ok(products);
         }
 
         /// <summary>
@@ -51,11 +47,9 @@ namespace loptopwebapi.Controllers
         /// <param name="maxPrice">Maximum price</param>
         /// <param name="minRamGb">Minimum RAM in GB</param>
         [HttpGet("filter")]
-        public async Task<IActionResult> GetFiltered([FromQuery] string? brand = null,[FromQuery] decimal? minPrice = null,
-            [FromQuery] decimal? maxPrice = null,[FromQuery] int? minRamGb = null)
+        public async Task<IActionResult> GetFiltered(CancellationToken ct, [FromQuery] string? brand = null,[FromQuery] decimal? minPrice = null,
+            [FromQuery] decimal? maxPrice = null, [FromQuery] int? minRamGb = null)
         {
-            _logger.LogInformation("Got Request for filtered Laptops: brand={Brand}, minPrice={MinPrice}, maxPrice={MaxPrice}, minRamGb={MinRamGb}",brand, minPrice, maxPrice, minRamGb);
-
             var query = new GetProductsQuery()
             {
                 Brand = brand,
@@ -64,8 +58,8 @@ namespace loptopwebapi.Controllers
                 MinRamGb = minRamGb
             };
 
-            var products = await _mediator.Send(query);
-            return Ok(products);
+            var result = await _mediator.Send(query, ct);
+            return Ok(result);
         }
 
         /// <summary>
@@ -73,7 +67,7 @@ namespace loptopwebapi.Controllers
         /// </summary>
         [HttpPost("{productId:guid}/rating")]
         [Authorize] 
-        public async Task<IActionResult> AddRating([FromRoute] Guid productId,[FromBody, Required] AddRatingRequest body,CancellationToken ct)
+        public async Task<IActionResult> AddRating([FromRoute] Guid productId,[FromBody, Required] AddRatingRequest body, CancellationToken ct)
         {
             _logger.LogInformation("Add rating: productId={ProductId},  rating={Rating}",
                 productId, body.Rating);

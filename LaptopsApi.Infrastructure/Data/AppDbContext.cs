@@ -41,7 +41,7 @@ namespace LaptopsApi.Infrastructure.Data
                 .OnDelete(DeleteBehavior.SetNull);
 
                 entity.HasOne(p => p.AddedByUser)
-                      .WithMany(u => u.AddedProducts)   // ← вот так!
+                      .WithMany(u => u.AddedProducts)
                       .HasForeignKey(p => p.AddedByUserId)
                       .HasConstraintName("FK_Product_User_added_by_user_id");
             });

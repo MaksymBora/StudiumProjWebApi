@@ -11,6 +11,7 @@
         public Guid? AddedByUserId { get; set; }
         public DateTime AddedDate { get; set; }
         public Guid? SpecsId { get; set; }
+        public double AverageRating { get; set; }
 
     }
 }
