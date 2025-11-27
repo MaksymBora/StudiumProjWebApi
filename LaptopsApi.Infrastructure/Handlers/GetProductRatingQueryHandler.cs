@@ -1,5 +1,6 @@
 ﻿using LaptopsApi.Application.Queries;
 using LaptopsApi.Infrastructure.Data;
+using LaptopsApi.Infrastructure.Helpers;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -20,15 +21,10 @@ namespace LaptopsApi.Infrastructure.Handlers
                 throw new ArgumentException("ProductId required");
 
             var ratings = _ctx.Reviews
-                .AsNoTracking()
-                .Where(r => r.ProductId == req.ProductId
-                            && r.ParentReviewId == null
-                            && r.Rating != null
-                            && !r.IsDeleted)
-                .Select(r => (double)r.Rating!);
+                .RootRatingValuesForProduct(req.ProductId);
 
             if (!await ratings.AnyAsync(ct))
-                return null; 
+                return null;
 
             return await ratings.AverageAsync(ct);
         }

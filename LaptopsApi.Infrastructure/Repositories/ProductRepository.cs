@@ -17,8 +17,8 @@ namespace LaptopsApi.Infrastructure.Repositories
         public async Task<IReadOnlyList<Product>> GetAllAsync(CancellationToken ct = default)
         {
             return await _context.Products
-            .AsNoTracking()
-            .ToListAsync(ct);
+                .AsNoTracking()
+                .ToListAsync(ct);
         }
     }
 }
