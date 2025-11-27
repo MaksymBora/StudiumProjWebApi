@@ -16,7 +16,7 @@ namespace LaptopsApi.Infrastructure.Handlers
             if (req.Rating < 1 || req.Rating > 5) throw new ArgumentException("Rating must be between 1 and 5");
 
             if (await _repo.HasUserRatedProductAsync(req.ProductId, req.UserId, ct))
-                throw new InvalidOperationException("User has already rated this product.");
+                throw new AlreadyRatedException();
 
             return await _repo.AddRootReviewAsync(req.ProductId, req.UserId, req.Rating, req.Comment, ct);
         }

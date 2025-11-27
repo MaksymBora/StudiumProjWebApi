@@ -77,15 +77,40 @@ namespace loptopwebapi.Controllers
 
             var userId = Guid.Parse(userIdStr);
 
-            var reviewId = await _mediator.Send(new AddProductRatingCommand
+            try
             {
-                ProductId = productId,
-                UserId = userId,           
-                Rating = body.Rating,
-                Comment = body.Comment
-            }, ct);
+                var reviewId = await _mediator.Send(new AddProductRatingCommand
+                {
+                    ProductId = productId,
+                    UserId = userId,
+                    Rating = body.Rating,
+                    Comment = body.Comment
+                }, ct);
 
-            return CreatedAtAction(nameof(GetRating), new { productId }, new { reviewId });
+                return CreatedAtAction(nameof(GetRating), new { productId }, new { reviewId });
+            }
+            catch (AlreadyRatedException ex)
+            {
+                _logger.LogWarning(ex, "User already rated product {ProductId}", productId);
+                return Conflict(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, "Validation error when adding rating");
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Business rule violation when adding rating");
+                // Пользователь уже голосовал – 409 вполне логично
+                return Conflict(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error when adding rating");
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    new { error = "Unexpected error occurred." });
+            }
         }
 
         /// <summary>
