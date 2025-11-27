@@ -102,7 +102,7 @@ namespace loptopwebapi.Controllers
             catch (InvalidOperationException ex)
             {
                 _logger.LogWarning(ex, "Business rule violation when adding rating");
-                // Пользователь уже голосовал – 409 вполне логично
+                
                 return Conflict(new { error = ex.Message });
             }
             catch (Exception ex)
