@@ -7,6 +7,7 @@
         public string UserName { get; set; } = string.Empty;
         public string? Comment { get; set; }
         public DateTime CreatedAtUtc { get; set; }
+        public int? Rating { get; set; }
         public Guid? ParentId { get; set; }
         public List<ProductReviewDto> Children { get; set; } = new();
     }

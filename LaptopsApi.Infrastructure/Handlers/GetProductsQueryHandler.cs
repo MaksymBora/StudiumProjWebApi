@@ -78,6 +78,7 @@ namespace LaptopsApi.Infrastructure.Handlers
                     r.ReviewDate,
                     r.Comment,
                     r.UserId,
+                    r.Rating,
                     UserName = u.Username
                 }).ToListAsync(cancellationToken);
 
@@ -91,6 +92,7 @@ namespace LaptopsApi.Infrastructure.Handlers
                     Comment = x.Comment,
                     CreatedAtUtc = x.ReviewDate,
                     ParentId = x.ParentReviewId,
+                    Rating = x.Rating,
                     Children = new List<ProductReviewDto>()
                 });
 
