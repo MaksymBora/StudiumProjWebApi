@@ -13,5 +13,7 @@
         public Guid? SpecsId { get; set; }
         public double AverageRating { get; set; }
 
+        public List<ProductReviewDto> Reviews { get; set; } = new();
+
     }
 }

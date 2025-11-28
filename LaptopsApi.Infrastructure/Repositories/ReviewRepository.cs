@@ -27,5 +27,22 @@ namespace LaptopsApi.Infrastructure.Repositories
             await _ctx.SaveChangesAsync(ct);
             return review.ReviewId;
         }
+
+        public async Task<Review?> GetByIdAsync(Guid reviewId, CancellationToken ct)
+        {
+            return await _ctx.Reviews
+                .AsNoTracking()
+                .FirstOrDefaultAsync(r => r.ReviewId == reviewId, ct);
+        }
+
+        public async Task<Guid> AddReplyAsync(Guid parentReviewId, Guid userId, string? comment, CancellationToken ct)
+        {
+            var reply = Review.CreateReply(parentReviewId, userId, comment);
+
+            _ctx.Reviews.Add(reply);
+            await _ctx.SaveChangesAsync(ct);
+
+            return reply.ReviewId;
+        }
     }
 }
