@@ -1,6 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using LaptopsApi.Application.Queries;
-using LaptopsApi.Application.Common.DTOs;
 using LopTopWebApi.Domain.Interfaces;
 using AutoMapper;
 using MediatR;
@@ -124,5 +123,32 @@ namespace loptopwebapi.Controllers
             var result = avg.HasValue ? Math.Round(avg.Value, 1) : (double?)null;
             return Ok(new { productId, averageRating = result });
         }
+
+        /// <summary>
+        /// Add reply to existing review (child comment).
+        /// </summary>
+        [Authorize]
+        [HttpPost("{productId:guid}/reviews/{parentReviewId:guid}/reply")]
+        public async Task<IActionResult> AddReply(Guid productId, Guid parentReviewId, [FromBody] AddReplyRequest body, CancellationToken ct)
+        {
+            var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                            ?? User.FindFirst("sub")?.Value;
+
+            if (!Guid.TryParse(userIdStr, out var userId))
+                return Unauthorized(new { message = "Invalid user id in token." });
+
+            var cmd = new AddReviewReplyCommand
+            {
+                ProductId = productId,
+                ParentReviewId = parentReviewId,
+                UserId = userId,
+                Comment = body.Comment
+            };
+
+            var replyId = await _mediator.Send(cmd, ct);
+
+            return Created(string.Empty, new { reviewId = replyId });
+        }
+
     }
 }

@@ -3,7 +3,6 @@ using LaptopsApi.Infrastructure.Data;
 using LaptopsApi.Application.Common.DTOs;
 using LaptopsApi.Application.Queries;
 using MediatR;
-using LaptopsApi.Infrastructure.Helpers;
 
 namespace LaptopsApi.Infrastructure.Handlers
 {
@@ -66,106 +65,80 @@ namespace LaptopsApi.Infrastructure.Handlers
 
             var productIds = products.Select(p => p.ProductId).ToList();
 
-            var rootRows = await (
-            from r in _context.Reviews.AsNoTracking()
-            join u in _context.Users.AsNoTracking()
-                on r.UserId equals u.UserId
-            where r.ProductId != null
-                  && productIds.Contains(r.ProductId.Value)
-                  && !r.IsDeleted
-                  && r.ParentReviewId == null
-            orderby r.ReviewDate
-            select new
-            {
-                ProductId = r.ProductId!.Value,
-                Review = new ProductReviewDto
-                {
-                    ReviewId = r.ReviewId,
-                    UserId = r.UserId,
-                    UserName = u.Username,
-                    Comment = r.Comment,
-                    CreatedAtUtc = r.ReviewDate,
-                    ParentId = null,                 // корень
-                    Children = new List<ProductReviewDto>()
-                }
-            }).ToListAsync(cancellationToken);
-
-            var rootIds = rootRows.Select(x => x.Review.ReviewId).ToList();
-
-            var childRows = await (
+            var reviewRows = await (
                 from r in _context.Reviews.AsNoTracking()
-                join root in _context.Reviews.AsNoTracking()
-                    on r.ParentReviewId equals root.ReviewId
                 join u in _context.Users.AsNoTracking()
                     on r.UserId equals u.UserId
-                where root.ProductId != null
-                      && productIds.Contains(root.ProductId.Value)
-                      && !r.IsDeleted
-                      && r.ParentReviewId != null
-                orderby r.ReviewDate
+                where !r.IsDeleted
                 select new
                 {
-                    ProductId = root.ProductId!.Value,
-                    Review = new ProductReviewDto
-                    {
-                        ReviewId = r.ReviewId,
-                        UserId = r.UserId,
-                        UserName = u.Username,
-                        Comment = r.Comment,
-                        CreatedAtUtc = r.ReviewDate,
-                        ParentId = r.ParentReviewId,
-                        Children = new List<ProductReviewDto>()
-                    }
+                    r.ReviewId,
+                    r.ProductId,
+                    r.ParentReviewId,
+                    r.ReviewDate,
+                    r.Comment,
+                    r.UserId,
+                    UserName = u.Username
                 }).ToListAsync(cancellationToken);
 
-            var allRows = rootRows.Concat(childRows).ToList();
+            var dtoById = reviewRows.ToDictionary(
+                x => x.ReviewId,
+                x => new ProductReviewDto
+                {
+                    ReviewId = x.ReviewId,
+                    UserId = x.UserId,
+                    UserName = x.UserName,
+                    Comment = x.Comment,
+                    CreatedAtUtc = x.ReviewDate,
+                    ParentId = x.ParentReviewId,
+                    Children = new List<ProductReviewDto>()
+                });
 
-            var reviewsByProduct = allRows
-                .GroupBy(x => x.ProductId)
+            var childrenLookup = reviewRows
+                .Where(x => x.ParentReviewId != null)
+                .GroupBy(x => x.ParentReviewId!.Value)
                 .ToDictionary(
                     g => g.Key,
-                    g => g.Select(x => x.Review).ToList()
+                    g => g.Select(x => dtoById[x.ReviewId])
+                          .OrderBy(d => d.CreatedAtUtc)
+                          .ToList()
                 );
 
+            List<ProductReviewDto> BuildTreeForProduct(Guid productId)
+            {
+                var roots = reviewRows
+                    .Where(x => x.ProductId == productId && x.ParentReviewId == null)
+                    .OrderBy(x => x.ReviewDate)
+                    .Select(x => dtoById[x.ReviewId])
+                    .ToList();
+
+                void AttachChildren(ProductReviewDto node)
+                {
+                    if (childrenLookup.TryGetValue(node.ReviewId, out var kids))
+                    {
+                        node.Children = kids;
+
+                        foreach (var child in kids)
+                        {
+                            AttachChildren(child); 
+                        }
+                    }
+                }
+
+                foreach (var root in roots)
+                {
+                    AttachChildren(root);
+                }
+
+                return roots;
+            }
 
             foreach (var p in products)
             {
-                if (reviewsByProduct.TryGetValue(p.ProductId, out var flatList))
-                {
-                    p.Reviews = BuildTree(flatList);
-                }
-                else
-                {
-                    p.Reviews = new List<ProductReviewDto>();
-                }
+                p.Reviews = BuildTreeForProduct(p.ProductId);
             }
 
             return products;
         }
-
-        private static List<ProductReviewDto> BuildTree(List<ProductReviewDto> flat)
-        {
-            var lookup = flat.ToDictionary(r => r.ReviewId);
-
-            var roots = new List<ProductReviewDto>();
-
-            foreach (var review in flat)
-            {
-                if (review.ParentId is null)
-                {
-                    roots.Add(review);
-                }
-                else
-                {
-                    if (lookup.TryGetValue(review.ParentId.Value, out var parent))
-                    {
-                        parent.Children.Add(review);
-                    }
-                }
-            }
-
-            return roots;
-        }
-
     }
 }
