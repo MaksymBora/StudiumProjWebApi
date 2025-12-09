@@ -52,5 +52,13 @@ namespace LopTopWebApi.Domain.Entities
                 throw new ArgumentException("New price must be greater than 0");
             Price = newPrice;
         }
+
+        public void AttachSpecs(Specs specs)
+        {
+            if (specs == null) throw new ArgumentNullException(nameof(specs));
+
+            SpecsId = specs.SpecsId;
+            Specs = specs;
+        }
     }
 }

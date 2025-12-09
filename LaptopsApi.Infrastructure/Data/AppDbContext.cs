@@ -52,7 +52,26 @@ namespace LaptopsApi.Infrastructure.Data
                 entity.ToTable("Specs");
                 entity.HasKey(e => e.SpecsId);
                 entity.Property(e => e.SpecsId).HasColumnName("specs_id").ValueGeneratedNever();
+
+                entity.Property(e => e.Processor).HasColumnName("processor");
                 entity.Property(e => e.RamGb).HasColumnName("ram_gb");
+                entity.Property(e => e.RamType).HasColumnName("ram_type");
+                entity.Property(e => e.StorageGb).HasColumnName("storage_gb");
+                entity.Property(e => e.StorageType).HasColumnName("storage_type");
+                entity.Property(e => e.StorageInterface).HasColumnName("storage_interface");
+                entity.Property(e => e.Gpu).HasColumnName("gpu");
+                entity.Property(e => e.GpuType).HasColumnName("gpu_type");
+                entity.Property(e => e.BatteryCapacityWh).HasColumnName("battery_capacity_wh");
+                entity.Property(e => e.BatteryLifeHours).HasColumnName("battery_life_hours");
+                entity.Property(e => e.CoolingSystem).HasColumnName("cooling_system");
+                entity.Property(e => e.DisplayResolution).HasColumnName("display_resolution");
+                entity.Property(e => e.DisplayRefreshRate).HasColumnName("display_refresh_rate");
+                entity.Property(e => e.PortsDescription).HasColumnName("ports_description");
+                entity.Property(e => e.WeightKg).HasColumnName("weight_kg");
+                entity.Property(e => e.Dimensions).HasColumnName("dimensions");
+                entity.Property(e => e.OperatingSystem).HasColumnName("operating_system");
+                entity.Property(e => e.WarrantyMonths).HasColumnName("warranty_months");
+                entity.Property(e => e.AdditionalFeatures).HasColumnName("additional_features");
             });
 
             modelBuilder.Entity<Review>(e =>

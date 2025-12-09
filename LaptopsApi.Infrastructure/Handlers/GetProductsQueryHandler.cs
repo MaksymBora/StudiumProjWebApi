@@ -60,6 +60,54 @@ namespace LaptopsApi.Infrastructure.Handlers
 
             var products = await productQuery.ToListAsync(cancellationToken);
 
+            var specsIds = products
+                .Where(p => p.SpecsId.HasValue)
+                .Select(p => p.SpecsId!.Value)
+                .Distinct()
+                .ToList();
+
+            if (specsIds.Count > 0)
+            {
+                var specsEntities = await _context.Specs
+                    .AsNoTracking()
+                    .Where(s => specsIds.Contains(s.SpecsId))
+                    .ToListAsync(cancellationToken);
+
+                var specsDict = specsEntities.ToDictionary(
+                    s => s.SpecsId,
+                    s => new SpecsDto
+                    {
+                        SpecsId = s.SpecsId,
+                        Processor = s.Processor,
+                        RamGb = s.RamGb,
+                        RamType = s.RamType,
+                        StorageGb = s.StorageGb,
+                        StorageType = s.StorageType,
+                        StorageInterface = s.StorageInterface,
+                        Gpu = s.Gpu,
+                        GpuType = s.GpuType,
+                        BatteryCapacityWh = s.BatteryCapacityWh,
+                        BatteryLifeHours = s.BatteryLifeHours,
+                        CoolingSystem = s.CoolingSystem,
+                        DisplayResolution = s.DisplayResolution,
+                        DisplayRefreshRate = s.DisplayRefreshRate,
+                        PortsDescription = s.PortsDescription,
+                        WeightKg = s.WeightKg,
+                        Dimensions = s.Dimensions,
+                        OperatingSystem = s.OperatingSystem,
+                        WarrantyMonths = s.WarrantyMonths,
+                        AdditionalFeatures = s.AdditionalFeatures
+                    });
+
+                foreach (var p in products)
+                {
+                    if (p.SpecsId.HasValue && specsDict.TryGetValue(p.SpecsId.Value, out var dto))
+                    {
+                        p.Specs = dto;
+                    }
+                }
+            }
+
             if (products.Count == 0)
                 return products;
 
