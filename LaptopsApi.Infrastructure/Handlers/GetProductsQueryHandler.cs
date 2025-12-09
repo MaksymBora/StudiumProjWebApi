@@ -6,7 +6,7 @@ using MediatR;
 
 namespace LaptopsApi.Infrastructure.Handlers
 {
-    public class GetProductsQueryHandler : IRequestHandler<GetProductsQuery, IEnumerable<ProductDto>>
+    public class GetProductsQueryHandler : IRequestHandler<GetProductsQuery, PagedResult<ProductDto>>
     {
         private readonly AppDbContext _context;
 
@@ -15,7 +15,7 @@ namespace LaptopsApi.Infrastructure.Handlers
             _context = context;
         }
 
-        public async Task<IEnumerable<ProductDto>> Handle(GetProductsQuery request, CancellationToken cancellationToken)
+        public async Task<PagedResult<ProductDto>> Handle(GetProductsQuery request, CancellationToken cancellationToken)
         {
             IQueryable<LopTopWebApi.Domain.Entities.Product> query = _context.Products;
 
@@ -36,6 +36,13 @@ namespace LaptopsApi.Infrastructure.Handlers
                     where s.RamGb >= request.MinRamGb.Value
                     select p;
             }
+
+            var totalItems = await query.CountAsync(cancellationToken);
+
+            var page = request.PageNumber <= 0 ? 1 : request.PageNumber;
+            var pageSize = request.PageSize <= 0 ? 10 : request.PageSize;
+
+            var totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
 
             IQueryable<ProductDto> productQuery =
                 from p in query.AsNoTracking()
@@ -88,6 +95,10 @@ namespace LaptopsApi.Infrastructure.Handlers
                 productQuery = productQuery.OrderBy(p => p.Name);
             }
 
+            productQuery = productQuery
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize);
+
             var products = await productQuery.ToListAsync(cancellationToken);
 
             var specsIds = products
@@ -139,7 +150,16 @@ namespace LaptopsApi.Infrastructure.Handlers
             }
 
             if (products.Count == 0)
-                return products;
+            {
+                return new PagedResult<ProductDto>
+                {
+                    Items = products,
+                    PageNumber = page,
+                    PageSize = pageSize,
+                    TotalItems = totalItems,
+                    TotalPages = totalPages
+                };
+            }
 
             var productIds = products.Select(p => p.ProductId).ToList();
 
@@ -147,7 +167,7 @@ namespace LaptopsApi.Infrastructure.Handlers
                 from r in _context.Reviews.AsNoTracking()
                 join u in _context.Users.AsNoTracking()
                     on r.UserId equals u.UserId
-                where !r.IsDeleted && productIds.Contains(r.ProductId!.Value)
+                where !r.IsDeleted && r.ProductId != null && productIds.Contains(r.ProductId.Value)
                 select new
                 {
                     r.ReviewId,
@@ -218,7 +238,14 @@ namespace LaptopsApi.Infrastructure.Handlers
                 p.Reviews = BuildTreeForProduct(p.ProductId);
             }
 
-            return products;
+            return new PagedResult<ProductDto>
+            {
+                Items = products,
+                PageNumber = page,
+                PageSize = pageSize,
+                TotalItems = totalItems,
+                TotalPages = totalPages
+            };
         }
     }
 }

@@ -33,14 +33,20 @@ namespace loptopwebapi.Controllers
         /// Get all laptops without filters
         /// </summary>
         [HttpGet]
-        public async Task<IActionResult> GetAll([FromQuery] string? sort, CancellationToken ct)
+        public async Task<IActionResult> GetAll(
+            CancellationToken ct,
+            [FromQuery] string? sort = null,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 12)
         {
-            var products = await _mediator.Send(new GetProductsQuery
+            var result = await _mediator.Send(new GetProductsQuery
             {
-                Sort = sort
+                Sort = sort,
+                PageNumber = page,
+                PageSize = pageSize
             }, ct);
 
-            return Ok(products);
+            return Ok(result); 
         }
 
         /// <summary>
@@ -49,20 +55,17 @@ namespace loptopwebapi.Controllers
         [HttpGet("{productId:guid}")]
         public async Task<IActionResult> GetById([FromRoute] Guid productId, CancellationToken ct)
         {
-            var query = new GetProductsQuery
+            var result = await _mediator.Send(new GetProductsQuery
             {
-             
-            };
+                PageNumber = 1,
+                PageSize = 1000 
+            }, ct);
 
-            var all = await _mediator.Send(query, ct);
-            var product = all.FirstOrDefault(p => p.ProductId == productId);
-
-            if (product is null)
+            if (result is null)
                 return NotFound();
 
-            return Ok(product);
+            return Ok(result);
         }
-
 
         /// <summary>
         /// Get laptops with optional filters
@@ -72,24 +75,29 @@ namespace loptopwebapi.Controllers
         /// <param name="maxPrice">Maximum price</param>
         /// <param name="minRamGb">Minimum RAM in GB</param>
         [HttpGet("filter")]
-        public async Task<IActionResult> GetFiltered(CancellationToken ct,
+        public async Task<IActionResult> GetFiltered(
+            CancellationToken ct,
             [FromQuery] string? brand = null,
             [FromQuery] decimal? minPrice = null,
             [FromQuery] decimal? maxPrice = null,
             [FromQuery] int? minRamGb = null,
-            [FromQuery] string? sort = null)
+            [FromQuery] string? sort = null,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 12)
         {
-            var query = new GetProductsQuery()
+            var query = new GetProductsQuery
             {
                 Brand = brand,
                 MinPrice = minPrice,
                 MaxPrice = maxPrice,
                 MinRamGb = minRamGb,
-                Sort = sort
+                Sort = sort,
+                PageNumber = page,
+                PageSize = pageSize
             };
 
             var result = await _mediator.Send(query, ct);
-            return Ok(result);
+            return Ok(result); 
         }
 
         /// <summary>
