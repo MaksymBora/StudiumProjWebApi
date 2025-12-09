@@ -37,26 +37,56 @@ namespace LaptopsApi.Infrastructure.Handlers
                     select p;
             }
 
-            var productQuery = from p in query.AsNoTracking()
-                               select new ProductDto
-                               {
-                                   ProductId = p.ProductId,
-                                   Name = p.Name,
-                                   Price = p.Price,
-                                   Brand = p.Brand,
-                                   ScreenSize = p.ScreenSize,
-                                   Description = p.Description,
-                                   AddedByUserId = p.AddedByUserId,
-                                   AddedDate = p.AddedDate,
-                                   SpecsId = p.SpecsId,
+            IQueryable<ProductDto> productQuery =
+                from p in query.AsNoTracking()
+                select new ProductDto
+                {
+                    ProductId = p.ProductId,
+                    Name = p.Name,
+                    Price = p.Price,
+                    Brand = p.Brand,
+                    ScreenSize = p.ScreenSize,
+                    Description = p.Description,
+                    AddedByUserId = p.AddedByUserId,
+                    AddedDate = p.AddedDate,
+                    SpecsId = p.SpecsId,
+                    AverageRating = _context.Reviews
+                        .Where(r => r.ProductId == p.ProductId &&
+                                    r.ParentReviewId == null &&
+                                    !r.IsDeleted &&
+                                    r.Rating.HasValue)
+                        .Average(r => (double?)r.Rating) ?? 0.0
+                };
 
-                                   AverageRating = _context.Reviews
-                                   .Where(r => r.ProductId == p.ProductId &&
-                                   r.ParentReviewId == null &&
-                                   !r.IsDeleted &&
-                                   r.Rating.HasValue)
-                                   .Average(r => (double?)r.Rating) ?? 0.0
-                               };
+            if (!string.IsNullOrWhiteSpace(request.Sort))
+            {
+                switch (request.Sort.Trim().ToLowerInvariant())
+                {
+                    case "rating_desc":
+                        productQuery = productQuery.OrderByDescending(p => p.AverageRating);
+                        break;
+
+                    case "rating_asc":
+                        productQuery = productQuery.OrderBy(p => p.AverageRating);
+                        break;
+
+                    case "price_desc":
+                        productQuery = productQuery.OrderByDescending(p => p.Price);
+                        break;
+
+                    case "price_asc":
+                        productQuery = productQuery.OrderBy(p => p.Price);
+                        break;
+
+                    default:
+                        productQuery = productQuery.OrderBy(p => p.Name);
+                        break;
+                }
+            }
+            else
+            {
+                productQuery = productQuery.OrderBy(p => p.Name);
+            }
 
             var products = await productQuery.ToListAsync(cancellationToken);
 
@@ -117,7 +147,7 @@ namespace LaptopsApi.Infrastructure.Handlers
                 from r in _context.Reviews.AsNoTracking()
                 join u in _context.Users.AsNoTracking()
                     on r.UserId equals u.UserId
-                where !r.IsDeleted
+                where !r.IsDeleted && productIds.Contains(r.ProductId!.Value)
                 select new
                 {
                     r.ReviewId,
@@ -170,7 +200,7 @@ namespace LaptopsApi.Infrastructure.Handlers
 
                         foreach (var child in kids)
                         {
-                            AttachChildren(child); 
+                            AttachChildren(child);
                         }
                     }
                 }

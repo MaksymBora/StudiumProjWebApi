@@ -33,9 +33,13 @@ namespace loptopwebapi.Controllers
         /// Get all laptops without filters
         /// </summary>
         [HttpGet]
-        public async Task<IActionResult> GetAll(CancellationToken ct)
+        public async Task<IActionResult> GetAll([FromQuery] string? sort, CancellationToken ct)
         {
-            var products = await _mediator.Send(new GetProductsQuery(), ct);
+            var products = await _mediator.Send(new GetProductsQuery
+            {
+                Sort = sort
+            }, ct);
+
             return Ok(products);
         }
 
@@ -68,15 +72,20 @@ namespace loptopwebapi.Controllers
         /// <param name="maxPrice">Maximum price</param>
         /// <param name="minRamGb">Minimum RAM in GB</param>
         [HttpGet("filter")]
-        public async Task<IActionResult> GetFiltered(CancellationToken ct, [FromQuery] string? brand = null,[FromQuery] decimal? minPrice = null,
-            [FromQuery] decimal? maxPrice = null, [FromQuery] int? minRamGb = null)
+        public async Task<IActionResult> GetFiltered(CancellationToken ct,
+            [FromQuery] string? brand = null,
+            [FromQuery] decimal? minPrice = null,
+            [FromQuery] decimal? maxPrice = null,
+            [FromQuery] int? minRamGb = null,
+            [FromQuery] string? sort = null)
         {
             var query = new GetProductsQuery()
             {
                 Brand = brand,
                 MinPrice = minPrice,
                 MaxPrice = maxPrice,
-                MinRamGb = minRamGb
+                MinRamGb = minRamGb,
+                Sort = sort
             };
 
             var result = await _mediator.Send(query, ct);

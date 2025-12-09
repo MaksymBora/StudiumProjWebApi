@@ -8,5 +8,6 @@ namespace LaptopsApi.Application.Queries
         public decimal? MinPrice { get; set; }
         public decimal? MaxPrice { get; set; }
         public int? MinRamGb { get; set; }
+        public string? Sort {  get; set; }
     }
 }
