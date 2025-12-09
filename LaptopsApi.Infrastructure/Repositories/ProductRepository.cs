@@ -20,5 +20,15 @@ namespace LaptopsApi.Infrastructure.Repositories
                 .AsNoTracking()
                 .ToListAsync(ct);
         }
+
+        public async Task AddAsync(Product product, CancellationToken ct = default)
+        {
+            await _context.Products.AddAsync(product, ct);
+        }
+
+        public Task SaveChangesAsync(CancellationToken ct = default)
+        {
+            return _context.SaveChangesAsync(ct);
+        }
     }
 }

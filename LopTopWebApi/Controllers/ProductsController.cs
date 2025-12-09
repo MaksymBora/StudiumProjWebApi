@@ -8,6 +8,7 @@ using LopTopWebApi.Contracts;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
+using LopTopWebApi.Extensions;
 
 namespace loptopwebapi.Controllers
 {
@@ -37,6 +38,27 @@ namespace loptopwebapi.Controllers
             var products = await _mediator.Send(new GetProductsQuery(), ct);
             return Ok(products);
         }
+
+        /// <summary>
+        /// Get product by id
+        /// </summary>
+        [HttpGet("{productId:guid}")]
+        public async Task<IActionResult> GetById([FromRoute] Guid productId, CancellationToken ct)
+        {
+            var query = new GetProductsQuery
+            {
+             
+            };
+
+            var all = await _mediator.Send(query, ct);
+            var product = all.FirstOrDefault(p => p.ProductId == productId);
+
+            if (product is null)
+                return NotFound();
+
+            return Ok(product);
+        }
+
 
         /// <summary>
         /// Get laptops with optional filters
@@ -131,8 +153,7 @@ namespace loptopwebapi.Controllers
         [HttpPost("{productId:guid}/reviews/{parentReviewId:guid}/reply")]
         public async Task<IActionResult> AddReply(Guid productId, Guid parentReviewId, [FromBody] AddReplyRequest body, CancellationToken ct)
         {
-            var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                            ?? User.FindFirst("sub")?.Value;
+            var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;
 
             if (!Guid.TryParse(userIdStr, out var userId))
                 return Unauthorized(new { message = "Invalid user id in token." });
@@ -150,5 +171,52 @@ namespace loptopwebapi.Controllers
             return Created(string.Empty, new { reviewId = replyId });
         }
 
+        /// <summary>
+        /// Create new product
+        /// </summary>
+        [Authorize]
+        [HttpPost]
+        public async Task<IActionResult> Create([FromBody] AddProductRequest body, CancellationToken ct)
+        {
+            var userId = User.GetUserId();
+
+            var cmd = new AddProductCommand
+            {
+                Name = body.Name,
+                Price = body.Price,
+                Brand = body.Brand,
+                ScreenSize = body.ScreenSize,
+                Description = body.Description,
+                UserId = userId,
+                Specs = body.Specs is null
+                    ? null
+                    : new AddSpecsCommand
+                    {
+                        Processor = body.Specs.Processor,
+                        RamGb = body.Specs.RamGb,
+                        RamType = body.Specs.RamType,
+                        StorageGb = body.Specs.StorageGb,
+                        StorageType = body.Specs.StorageType,
+                        StorageInterface = body.Specs.StorageInterface,
+                        Gpu = body.Specs.Gpu,
+                        GpuType = body.Specs.GpuType,
+                        BatteryCapacityWh = body.Specs.BatteryCapacityWh,
+                        BatteryLifeHours = body.Specs.BatteryLifeHours,
+                        CoolingSystem = body.Specs.CoolingSystem,
+                        DisplayResolution = body.Specs.DisplayResolution,
+                        DisplayRefreshRate = body.Specs.DisplayRefreshRate,
+                        PortsDescription = body.Specs.PortsDescription,
+                        WeightKg = body.Specs.WeightKg,
+                        Dimensions = body.Specs.Dimensions,
+                        OperatingSystem = body.Specs.OperatingSystem,
+                        WarrantyMonths = body.Specs.WarrantyMonths,
+                        AdditionalFeatures = body.Specs.AdditionalFeatures
+                    }
+            };
+
+            var id = await _mediator.Send(cmd, ct);
+
+            return Created(string.Empty, new { productId = id });
+        }
     }
 }

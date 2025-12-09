@@ -14,6 +14,7 @@
         public double AverageRating { get; set; }
 
         public List<ProductReviewDto> Reviews { get; set; } = new();
+        public SpecsDto? Specs { get; set; }
 
     }
 }
