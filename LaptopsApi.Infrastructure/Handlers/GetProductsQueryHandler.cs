@@ -40,7 +40,7 @@ namespace LaptopsApi.Infrastructure.Handlers
             var totalItems = await query.CountAsync(cancellationToken);
 
             var page = request.PageNumber <= 0 ? 1 : request.PageNumber;
-            var pageSize = request.PageSize <= 0 ? 10 : request.PageSize;
+            var pageSize = request.PageSize <= 0 ? 12 : request.PageSize;
 
             var totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
 
@@ -167,7 +167,7 @@ namespace LaptopsApi.Infrastructure.Handlers
                 from r in _context.Reviews.AsNoTracking()
                 join u in _context.Users.AsNoTracking()
                     on r.UserId equals u.UserId
-                where !r.IsDeleted && r.ProductId != null && productIds.Contains(r.ProductId.Value)
+                where !r.IsDeleted
                 select new
                 {
                     r.ReviewId,
