@@ -4,7 +4,12 @@ namespace LopTopWebApi.Contracts
 {
     public sealed class LoginRequest
     {
-        [Required] public string Login { get; set; } = "";  
-        [Required] public string Password { get; set; } = "";
+        [Required]
+        [StringLength(100)]
+        public string Login { get; set; } = string.Empty;
+
+        [Required]
+        [StringLength(100)]
+        public string Password { get; set; } = string.Empty;
     }
 }

@@ -23,15 +23,21 @@ namespace LaptopsApi.Infrastructure.Handlers
             if (string.IsNullOrWhiteSpace(req.Login) || string.IsNullOrWhiteSpace(req.Password))
                 throw new ArgumentException("Login and password are required.");
 
-            var user = await _repo.FindByUsernameOrEmailAsync(req.Login.Trim(), ct)
+            var login = req.Login.Trim();
+            if (login.Length > 100)
+                throw new ArgumentException("Login value is too long.");
+
+            var normalizedLogin = login.ToLowerInvariant();
+
+            var user = await _repo.FindByUsernameOrEmailAsync(normalizedLogin, ct)
                        ?? throw new UnauthorizedAccessException("Invalid credentials.");
 
             if (!_hasher.Verify(req.Password, user.PasswordHash))
                 throw new UnauthorizedAccessException("Invalid credentials.");
 
-            // если у тебя есть роль — подставь из user
             var access = _tokens.CreateAccessToken(user.UserId, user.Username, user.Email, role: null);
             return access;
         }
+
     }
 }

@@ -17,8 +17,44 @@ namespace LaptopsApi.Infrastructure.Handlers
 
         public async Task<PagedResult<ProductDto>> Handle(GetProductsQuery request, CancellationToken cancellationToken)
         {
-            IQueryable<LopTopWebApi.Domain.Entities.Product> query = _context.Products;
+            var filteredProductsQuery = ApplyFilters(_context.Products, request);
 
+            var totalItems = await filteredProductsQuery.CountAsync(cancellationToken);
+
+            var page = request.PageNumber <= 0 ? 1 : request.PageNumber;
+            var pageSize = request.PageSize <= 0 ? 12 : request.PageSize;
+            var totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
+
+            var productQuery = BuildBaseProductDtoQuery(filteredProductsQuery);
+
+            productQuery = ApplySorting(productQuery, request.Sort);
+
+            productQuery = ApplyPaging(productQuery, page, pageSize);
+
+            var products = await productQuery.ToListAsync(cancellationToken);
+
+            await LoadSpecsForProductsAsync(products, cancellationToken);
+
+            await LoadReviewsForProductsAsync(products, cancellationToken);
+
+            return new PagedResult<ProductDto>
+            {
+                Items = products,
+                PageNumber = page,
+                PageSize = pageSize,
+                TotalItems = totalItems,
+                TotalPages = totalPages
+            };
+        }
+
+
+        /// <summary>
+        /// Application of filters (brand, price, minimum RAM).
+        /// </summary>
+        private IQueryable<LopTopWebApi.Domain.Entities.Product> ApplyFilters(
+            IQueryable<LopTopWebApi.Domain.Entities.Product> query,
+            GetProductsQuery request)
+        {
             if (!string.IsNullOrEmpty(request.Brand))
                 query = query.Where(p => p.Brand == request.Brand);
 
@@ -37,15 +73,17 @@ namespace LaptopsApi.Infrastructure.Handlers
                     select p;
             }
 
-            var totalItems = await query.CountAsync(cancellationToken);
+            return query;
+        }
 
-            var page = request.PageNumber <= 0 ? 1 : request.PageNumber;
-            var pageSize = request.PageSize <= 0 ? 12 : request.PageSize;
-
-            var totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
-
-            IQueryable<ProductDto> productQuery =
-                from p in query.AsNoTracking()
+        /// <summary>
+        /// Request that converts Product into ProductDto and calculates the AverageRating.
+        /// </summary>
+        private IQueryable<ProductDto> BuildBaseProductDtoQuery(
+            IQueryable<LopTopWebApi.Domain.Entities.Product> productsQuery)
+        {
+            return
+                from p in productsQuery.AsNoTracking()
                 select new ProductDto
                 {
                     ProductId = p.ProductId,
@@ -64,102 +102,116 @@ namespace LaptopsApi.Infrastructure.Handlers
                                     r.Rating.HasValue)
                         .Average(r => (double?)r.Rating) ?? 0.0
                 };
+        }
 
-            if (!string.IsNullOrWhiteSpace(request.Sort))
+        /// <summary>
+        /// Applies sorting based on the sort string.
+        /// </summary>
+        private IQueryable<ProductDto> ApplySorting(
+            IQueryable<ProductDto> query,
+            string? sort)
+        {
+            if (string.IsNullOrWhiteSpace(sort))
+                return query.OrderBy(p => p.Name);
+
+            switch (sort.Trim().ToLowerInvariant())
             {
-                switch (request.Sort.Trim().ToLowerInvariant())
-                {
-                    case "rating_desc":
-                        productQuery = productQuery.OrderByDescending(p => p.AverageRating);
-                        break;
+                case "rating_desc":
+                    return query.OrderByDescending(p => p.AverageRating);
 
-                    case "rating_asc":
-                        productQuery = productQuery.OrderBy(p => p.AverageRating);
-                        break;
+                case "rating_asc":
+                    return query.OrderBy(p => p.AverageRating);
 
-                    case "price_desc":
-                        productQuery = productQuery.OrderByDescending(p => p.Price);
-                        break;
+                case "price_desc":
+                    return query.OrderByDescending(p => p.Price);
 
-                    case "price_asc":
-                        productQuery = productQuery.OrderBy(p => p.Price);
-                        break;
+                case "price_asc":
+                    return query.OrderBy(p => p.Price);
 
-                    default:
-                        productQuery = productQuery.OrderBy(p => p.Name);
-                        break;
-                }
+                default:
+                    return query.OrderBy(p => p.Name);
             }
-            else
-            {
-                productQuery = productQuery.OrderBy(p => p.Name);
-            }
+        }
 
-            productQuery = productQuery
+        /// <summary>
+        /// Pagination.
+        /// </summary>
+        private IQueryable<ProductDto> ApplyPaging(
+            IQueryable<ProductDto> query,
+            int page,
+            int pageSize)
+        {
+            return query
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize);
+        }
 
-            var products = await productQuery.ToListAsync(cancellationToken);
-
+        /// <summary>
+        /// Loads the specs and maps them into ProductDto.Specs.
+        /// </summary>
+        private async Task LoadSpecsForProductsAsync(
+            List<ProductDto> products,
+            CancellationToken ct)
+        {
             var specsIds = products
                 .Where(p => p.SpecsId.HasValue)
                 .Select(p => p.SpecsId!.Value)
                 .Distinct()
                 .ToList();
 
-            if (specsIds.Count > 0)
-            {
-                var specsEntities = await _context.Specs
-                    .AsNoTracking()
-                    .Where(s => specsIds.Contains(s.SpecsId))
-                    .ToListAsync(cancellationToken);
+            if (specsIds.Count == 0)
+                return;
 
-                var specsDict = specsEntities.ToDictionary(
-                    s => s.SpecsId,
-                    s => new SpecsDto
-                    {
-                        SpecsId = s.SpecsId,
-                        Processor = s.Processor,
-                        RamGb = s.RamGb,
-                        RamType = s.RamType,
-                        StorageGb = s.StorageGb,
-                        StorageType = s.StorageType,
-                        StorageInterface = s.StorageInterface,
-                        Gpu = s.Gpu,
-                        GpuType = s.GpuType,
-                        BatteryCapacityWh = s.BatteryCapacityWh,
-                        BatteryLifeHours = s.BatteryLifeHours,
-                        CoolingSystem = s.CoolingSystem,
-                        DisplayResolution = s.DisplayResolution,
-                        DisplayRefreshRate = s.DisplayRefreshRate,
-                        PortsDescription = s.PortsDescription,
-                        WeightKg = s.WeightKg,
-                        Dimensions = s.Dimensions,
-                        OperatingSystem = s.OperatingSystem,
-                        WarrantyMonths = s.WarrantyMonths,
-                        AdditionalFeatures = s.AdditionalFeatures
-                    });
+            var specsEntities = await _context.Specs
+                .AsNoTracking()
+                .Where(s => specsIds.Contains(s.SpecsId))
+                .ToListAsync(ct);
 
-                foreach (var p in products)
+            var specsDict = specsEntities.ToDictionary(
+                s => s.SpecsId,
+                s => new SpecsDto
                 {
-                    if (p.SpecsId.HasValue && specsDict.TryGetValue(p.SpecsId.Value, out var dto))
-                    {
-                        p.Specs = dto;
-                    }
+                    SpecsId = s.SpecsId,
+                    Processor = s.Processor,
+                    RamGb = s.RamGb,
+                    RamType = s.RamType,
+                    StorageGb = s.StorageGb,
+                    StorageType = s.StorageType,
+                    StorageInterface = s.StorageInterface,
+                    Gpu = s.Gpu,
+                    GpuType = s.GpuType,
+                    BatteryCapacityWh = s.BatteryCapacityWh,
+                    BatteryLifeHours = s.BatteryLifeHours,
+                    CoolingSystem = s.CoolingSystem,
+                    DisplayResolution = s.DisplayResolution,
+                    DisplayRefreshRate = s.DisplayRefreshRate,
+                    PortsDescription = s.PortsDescription,
+                    WeightKg = s.WeightKg,
+                    Dimensions = s.Dimensions,
+                    OperatingSystem = s.OperatingSystem,
+                    WarrantyMonths = s.WarrantyMonths,
+                    AdditionalFeatures = s.AdditionalFeatures
+                });
+
+            foreach (var p in products)
+            {
+                if (p.SpecsId.HasValue &&
+                    specsDict.TryGetValue(p.SpecsId.Value, out var dto))
+                {
+                    p.Specs = dto;
                 }
             }
+        }
 
+        /// <summary>
+        /// Loads the reviews, builds the children tree, and assigns them to the products.
+        /// </summary>
+        private async Task LoadReviewsForProductsAsync(
+            List<ProductDto> products,
+            CancellationToken ct)
+        {
             if (products.Count == 0)
-            {
-                return new PagedResult<ProductDto>
-                {
-                    Items = products,
-                    PageNumber = page,
-                    PageSize = pageSize,
-                    TotalItems = totalItems,
-                    TotalPages = totalPages
-                };
-            }
+                return;
 
             var productIds = products.Select(p => p.ProductId).ToList();
 
@@ -178,7 +230,10 @@ namespace LaptopsApi.Infrastructure.Handlers
                     r.UserId,
                     r.Rating,
                     UserName = u.Username
-                }).ToListAsync(cancellationToken);
+                }).ToListAsync(ct);
+
+            if (reviewRows.Count == 0)
+                return;
 
             var dtoById = reviewRows.ToDictionary(
                 x => x.ReviewId,
@@ -237,15 +292,6 @@ namespace LaptopsApi.Infrastructure.Handlers
             {
                 p.Reviews = BuildTreeForProduct(p.ProductId);
             }
-
-            return new PagedResult<ProductDto>
-            {
-                Items = products,
-                PageNumber = page,
-                PageSize = pageSize,
-                TotalItems = totalItems,
-                TotalPages = totalPages
-            };
         }
     }
 }

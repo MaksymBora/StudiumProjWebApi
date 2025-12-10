@@ -13,6 +13,13 @@ using System.Text;
 
 //!
 var builder = WebApplication.CreateBuilder(args);
+
+builder.WebHost.ConfigureKestrel(options =>
+{
+    // max 1mb
+    options.Limits.MaxRequestBodySize = 1 * 1024 * 1024;
+});
+
 builder.Configuration
     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
     .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
