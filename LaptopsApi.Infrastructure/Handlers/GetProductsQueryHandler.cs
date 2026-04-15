@@ -22,7 +22,7 @@ namespace LaptopsApi.Infrastructure.Handlers
             var totalItems = await filteredProductsQuery.CountAsync(cancellationToken);
 
             var page = request.PageNumber <= 0 ? 1 : request.PageNumber;
-            var pageSize = request.PageSize <= 0 ? 12 : request.PageSize;
+            var pageSize = request.PageSize <= 0 ? 9 : request.PageSize;
             var totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
 
             var productQuery = BuildBaseProductDtoQuery(filteredProductsQuery);

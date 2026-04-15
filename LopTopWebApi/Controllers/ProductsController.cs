@@ -37,7 +37,7 @@ namespace loptopwebapi.Controllers
             CancellationToken ct,
             [FromQuery] string? sort = null,
             [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 12)
+            [FromQuery] int pageSize = 9)
         {
             var result = await _mediator.Send(new GetProductsQuery
             {
@@ -83,7 +83,7 @@ namespace loptopwebapi.Controllers
             [FromQuery] int? minRamGb = null,
             [FromQuery] string? sort = null,
             [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 12)
+            [FromQuery] int pageSize = 9)
         {
             var query = new GetProductsQuery
             {
