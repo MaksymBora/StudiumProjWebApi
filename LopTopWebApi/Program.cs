@@ -103,6 +103,7 @@ builder.Services.AddScoped<ITokenService, JwtTokenService>();
 var jwtKey = builder.Configuration["Jwt:Key"]!;
 var jwtIssuer = builder.Configuration["Jwt:Issuer"];
 var jwtAudience = builder.Configuration["Jwt:Audience"];
+var firebaseProjectId = builder.Configuration["Firebase:ProjectId"];
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -119,6 +120,26 @@ builder.Services
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromSeconds(30)
         };
+    })
+    .AddJwtBearer("Firebase", options =>
+    {
+        options.RequireHttpsMetadata = true;
+        options.SaveToken = false;
+
+        if (!string.IsNullOrWhiteSpace(firebaseProjectId))
+        {
+            options.Authority = $"https://securetoken.google.com/{firebaseProjectId}";
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidIssuer = $"https://securetoken.google.com/{firebaseProjectId}",
+                ValidateAudience = true,
+                ValidAudience = firebaseProjectId,
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
+                ClockSkew = TimeSpan.FromMinutes(1)
+            };
+        }
     });
 
 builder.Services.AddAuthorization();
